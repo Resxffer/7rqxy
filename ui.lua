@@ -1,7 +1,7 @@
--- 7rqxy Custom UI Library v3.2.0 | Dark Glassmorphism | Mobile Optimized
+-- 7rqxy Custom UI Library v3.3.0 | Black & Ash Theme | Mobile Fixes Applied
 
 local Library = {}
-Library.Version = "3.2.0"
+Library.Version = "3.3.0"
 
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
@@ -11,18 +11,18 @@ local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 
 local DefaultTheme = {
-    Background = Color3.fromRGB(5, 5, 8),             -- Deep dark base
-    Panel = Color3.fromRGB(15, 15, 20),                -- Dark elevated cards
-    Accent = Color3.fromRGB(150, 130, 255),
-    AccentGradient = {Color3.fromRGB(178, 120, 255), Color3.fromRGB(90, 175, 255)},
-    Text = Color3.fromRGB(240, 240, 248),
-    SubText = Color3.fromRGB(148, 148, 170),
-    SectionHeader = Color3.fromRGB(122, 122, 148),
+    Background = Color3.fromRGB(10, 10, 10),           -- Deep Obsidian Black
+    Panel = Color3.fromRGB(20, 20, 20),                -- Ash Black Cards
+    Accent = Color3.fromRGB(160, 165, 170),            -- Ash Silver 
+    AccentGradient = {Color3.fromRGB(200, 205, 210), Color3.fromRGB(110, 115, 120)},
+    Text = Color3.fromRGB(245, 245, 245),
+    SubText = Color3.fromRGB(150, 150, 150),
+    SectionHeader = Color3.fromRGB(160, 165, 170),
     Success = Color3.fromRGB(120, 220, 160),
     Error = Color3.fromRGB(230, 110, 120),
-    BackgroundTransparency = 0.05, -- Much darker, less transparent
-    PanelTransparency = 0.20,      -- Darker rows
-    StrokeTransparency = 0.50,
+    BackgroundTransparency = 0.05, 
+    PanelTransparency = 0.15,      
+    StrokeTransparency = 0.35,
     CornerRadius = 14,      -- main window
     RowCornerRadius = 8,    -- glass row cards
 }
@@ -77,7 +77,7 @@ local function addShadow(parent, transparency, padding)
     shadow.BackgroundTransparency = 1
     shadow.Image = "rbxassetid://5028857084"
     shadow.ImageColor3 = Color3.new(0, 0, 0)
-    shadow.ImageTransparency = transparency or 0.6 -- Darker shadow
+    shadow.ImageTransparency = transparency or 0.6
     shadow.ScaleType = Enum.ScaleType.Slice
     shadow.SliceCenter = Rect.new(23, 23, 277, 277)
     local p = padding or 24
@@ -97,7 +97,7 @@ local function addGlassSheen(frame, strokeTransparency, theme)
     grad.Rotation = 75
     grad.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.new(1, 1, 1))
     grad.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.85),  -- Reduced white glare
+        NumberSequenceKeypoint.new(0, 0.85),
         NumberSequenceKeypoint.new(0.55, 0.98),
         NumberSequenceKeypoint.new(1, 0.90),
     })
@@ -117,7 +117,7 @@ local function addRimLight(frame)
     grad.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.new(1, 1, 1))
     grad.Transparency = NumberSequence.new({
         NumberSequenceKeypoint.new(0, 1),
-        NumberSequenceKeypoint.new(0.5, 0.70), -- Dimmer rim light
+        NumberSequenceKeypoint.new(0.5, 0.65), 
         NumberSequenceKeypoint.new(1, 1),
     })
     rim.Parent = frame
@@ -323,6 +323,7 @@ function Library:CreateWindow(config)
 
     makeDraggable(TopBar, Main)
 
+    -- MOBILE TOGGLE BUTTON FIX: Uses exact drag calculations and strict InputEnded
     local tDragging, tMoved, tStart, tPos = false, false, nil, nil
     track(ToggleBtn.InputBegan:Connect(function(input)
         if isPress(input) then
@@ -330,12 +331,16 @@ function Library:CreateWindow(config)
         end
     end))
     track(ToggleBtn.InputEnded:Connect(function(input)
-        if isPress(input) then tDragging = false end
+        if isPress(input) then 
+            tDragging = false 
+            if not tMoved then 
+                setOpen(not isOpen) 
+            end
+        end
     end))
     track(UserInputService.InputChanged:Connect(function(input)
         if tDragging and isMove(input) then
             local delta = input.Position - tStart
-            -- FIX 1: INCREASED DRAG THRESHOLD TO 15 FOR MOBILE RELIABILITY
             if delta.Magnitude > 15 then 
                 tMoved = true
                 local screen = screenSize()
@@ -345,9 +350,6 @@ function Library:CreateWindow(config)
                 ToggleBtn.Position = UDim2.new(0, newX, 0, newY)
             end
         end
-    end))
-    track(ToggleBtn.MouseButton1Click:Connect(function()
-        if not tMoved then setOpen(not isOpen) end
     end))
     track(UserInputService.InputBegan:Connect(function(input, gp)
         if not gp and input.KeyCode == MenuKey then setOpen(not isOpen) end
@@ -398,17 +400,20 @@ function Library:CreateWindow(config)
         table.insert(Tabs, entry)
         FirstTab = false
 
-        track(TabBtn.MouseButton1Click:Connect(function()
-            for _, t in pairs(Tabs) do
-                t.Page.Visible = false
-                tween(t.Btn, easeInfo(0.15), {BackgroundTransparency = 0.95})
-                tween(t.Stroke, easeInfo(0.15), {Transparency = 0.95})
-                t.Btn.TextColor3 = Theme.SubText
+        -- TAB BUTTON MOBILE FIX
+        track(TabBtn.InputEnded:Connect(function(input)
+            if isPress(input) then
+                for _, t in pairs(Tabs) do
+                    t.Page.Visible = false
+                    tween(t.Btn, easeInfo(0.15), {BackgroundTransparency = 0.95})
+                    tween(t.Stroke, easeInfo(0.15), {Transparency = 0.95})
+                    t.Btn.TextColor3 = Theme.SubText
+                end
+                TabPage.Visible = true
+                tween(TabBtn, easeInfo(0.15), {BackgroundTransparency = 0.15})
+                tween(TabStroke, easeInfo(0.15), {Transparency = 0.45})
+                TabBtn.TextColor3 = Theme.Text
             end
-            TabPage.Visible = true
-            tween(TabBtn, easeInfo(0.15), {BackgroundTransparency = 0.15})
-            tween(TabStroke, easeInfo(0.15), {Transparency = 0.45})
-            TabBtn.TextColor3 = Theme.Text
         end))
 
         function Tab:CreateHeader(text)
@@ -516,8 +521,11 @@ function Library:CreateWindow(config)
             end
             function ToggleObj:Get() return state end
 
-            track(B.MouseButton1Click:Connect(function()
-                ToggleObj:Set(not state)
+            -- TOGGLE BUTTON MOBILE FIX
+            track(B.InputEnded:Connect(function(input)
+                if isPress(input) then
+                    ToggleObj:Set(not state)
+                end
             end))
 
             return ToggleObj
@@ -699,19 +707,17 @@ function Library:CreateWindow(config)
                 tween(Row, easeInfo(0.22), {Size = openSize()})
                 tween(Chevron, easeInfo(0.2), {Rotation = 180})
                 
-                -- FIX 2: PREVENT INSTANT CLOSING ON THE SAME TAP
-                task.delay(0.1, function()
-                    if not open then return end
-                    outsideConn = UserInputService.InputBegan:Connect(function(input, gp)
-                        if gp or not isPress(input) then return end
-                        local ap, asize = Row.AbsolutePosition, Row.AbsoluteSize
-                        local pos = input.Position
-                        if pos.X < ap.X or pos.X > ap.X + asize.X or pos.Y < ap.Y or pos.Y > ap.Y + asize.Y then
-                            close()
-                        end
-                    end)
-                    track(outsideConn)
+                -- DROPDOWN MOBILE FIX: Uses target boundary size to ensure clicks on list don't close it instantly
+                outsideConn = UserInputService.InputBegan:Connect(function(input, gp)
+                    if gp or not isPress(input) then return end
+                    local ap = Row.AbsolutePosition
+                    local currentTargetHeight = rowHeight + topGap + listHeight + bottomPad
+                    local pos = input.Position
+                    if pos.X < ap.X or pos.X > ap.X + Row.AbsoluteSize.X or pos.Y < ap.Y or pos.Y > ap.Y + currentTargetHeight then
+                        close()
+                    end
                 end)
+                track(outsideConn)
 
                 task.defer(function()
                     local rowTop = Row.AbsolutePosition.Y - TabPage.AbsolutePosition.Y + TabPage.CanvasPosition.Y
@@ -773,17 +779,22 @@ function Library:CreateWindow(config)
                             tween(ib, easeInfo(0.12), {BackgroundTransparency = 1})
                         end
                     end))
-                    track(ib.MouseButton1Click:Connect(function()
-                        Drop:Set(itm, true)
-                        close()
+                    -- DROPDOWN ITEM MOBILE FIX: Reliable InputEnded
+                    track(ib.InputEnded:Connect(function(input)
+                        if isPress(input) then
+                            Drop:Set(itm, true)
+                            close()
+                        end
                     end))
                 end
                 List.CanvasSize = UDim2.new(0, 0, 0, #options * optionHeight + 8)
             end
             Drop:Refresh(opts.Options)
 
-            track(B.MouseButton1Click:Connect(function()
-                if open then close() else openDrop() end
+            track(B.InputEnded:Connect(function(input)
+                if isPress(input) then
+                    if open then close() else openDrop() end
+                end
             end))
 
             return Drop
@@ -861,9 +872,11 @@ function Library:CreateWindow(config)
                 B.Text = key.Name
             end
 
-            track(B.MouseButton1Click:Connect(function()
-                listening = true
-                B.Text = "..."
+            track(B.InputEnded:Connect(function(input)
+                if isPress(input) then
+                    listening = true
+                    B.Text = "..."
+                end
             end))
 
             track(UserInputService.InputBegan:Connect(function(input, gp)
@@ -891,8 +904,10 @@ function Library:CreateWindow(config)
             B.Font = Enum.Font.GothamBold
             B.TextSize = 14
 
-            track(B.MouseButton1Click:Connect(function()
-                if opts.Callback then opts.Callback() end
+            track(B.InputEnded:Connect(function(input)
+                if isPress(input) then
+                    if opts.Callback then opts.Callback() end
+                end
             end))
         end
 
