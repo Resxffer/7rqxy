@@ -1,30 +1,25 @@
--- 7rqxy Custom UI Library v3.3.0 | Black & Ash Theme | Mobile Fixes Applied
+-- 7rqxy Custom UI Library v4.0.0 | Solid Black & Ash | Native Mobile Taps
 
 local Library = {}
-Library.Version = "3.3.0"
+Library.Version = "4.0.0"
 
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
-local Lighting = game:GetService("Lighting")
 
 local DefaultTheme = {
-    Background = Color3.fromRGB(10, 10, 10),           -- Deep Obsidian Black
-    Panel = Color3.fromRGB(20, 20, 20),                -- Ash Black Cards
+    Background = Color3.fromRGB(15, 15, 18),           -- Solid Dark Base
+    Panel = Color3.fromRGB(25, 25, 30),                -- Solid Ash Cards
     Accent = Color3.fromRGB(160, 165, 170),            -- Ash Silver 
-    AccentGradient = {Color3.fromRGB(200, 205, 210), Color3.fromRGB(110, 115, 120)},
     Text = Color3.fromRGB(245, 245, 245),
     SubText = Color3.fromRGB(150, 150, 150),
     SectionHeader = Color3.fromRGB(160, 165, 170),
     Success = Color3.fromRGB(120, 220, 160),
     Error = Color3.fromRGB(230, 110, 120),
-    BackgroundTransparency = 0.05, 
-    PanelTransparency = 0.15,      
-    StrokeTransparency = 0.35,
-    CornerRadius = 14,      -- main window
-    RowCornerRadius = 8,    -- glass row cards
+    CornerRadius = 8,       -- sharper corners for solid look
+    RowCornerRadius = 6,    
 }
 Library.Theme = DefaultTheme
 
@@ -68,16 +63,16 @@ local function screenSize()
     return cam and cam.ViewportSize or Vector2.new(1280, 720)
 end
 
---// Glass building blocks -----------------------------------------------
+--// Solid building blocks -----------------------------------------------
 
-local function addShadow(parent, transparency, padding)
+local function addShadow(parent, padding)
     local shadow = Instance.new("ImageLabel")
     shadow.Name = "Shadow"
     shadow.ZIndex = math.max((parent.ZIndex or 1) - 1, 0)
     shadow.BackgroundTransparency = 1
     shadow.Image = "rbxassetid://5028857084"
     shadow.ImageColor3 = Color3.new(0, 0, 0)
-    shadow.ImageTransparency = transparency or 0.6
+    shadow.ImageTransparency = 0.5 -- Solid shadow
     shadow.ScaleType = Enum.ScaleType.Slice
     shadow.SliceCenter = Rect.new(23, 23, 277, 277)
     local p = padding or 24
@@ -87,63 +82,19 @@ local function addShadow(parent, transparency, padding)
     return shadow
 end
 
-local function addGlassSheen(frame, strokeTransparency, theme)
-    local stroke = Instance.new("UIStroke", frame)
-    stroke.Color = theme.Accent
-    stroke.Thickness = 1
-    stroke.Transparency = strokeTransparency or theme.StrokeTransparency
-
-    local grad = Instance.new("UIGradient", frame)
-    grad.Rotation = 75
-    grad.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.new(1, 1, 1))
-    grad.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.85),
-        NumberSequenceKeypoint.new(0.55, 0.98),
-        NumberSequenceKeypoint.new(1, 0.90),
-    })
-    return stroke, grad
-end
-
-local function addRimLight(frame)
-    local rim = Instance.new("Frame")
-    rim.Name = "RimLight"
-    rim.BackgroundColor3 = Color3.new(1, 1, 1)
-    rim.BorderSizePixel = 0
-    rim.AnchorPoint = Vector2.new(0.5, 0)
-    rim.Position = UDim2.new(0.5, 0, 0, 1)
-    rim.Size = UDim2.new(1, -8, 0, 1)
-    rim.ZIndex = (frame.ZIndex or 1) + 1
-    local grad = Instance.new("UIGradient", rim)
-    grad.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.new(1, 1, 1))
-    grad.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 1),
-        NumberSequenceKeypoint.new(0.5, 0.65), 
-        NumberSequenceKeypoint.new(1, 1),
-    })
-    rim.Parent = frame
-    return rim
-end
-
-local function newGlassPanel(parent, theme, size, position, cornerRadius)
+local function newPanel(parent, theme, size, position, cornerRadius)
     local f = Instance.new("Frame", parent)
     f.Size = size
     if position then f.Position = position end
     f.BackgroundColor3 = theme.Panel
-    f.BackgroundTransparency = theme.PanelTransparency
     f.BorderSizePixel = 0
-    Instance.new("UICorner", f).CornerRadius = UDim.new(0, cornerRadius or theme.RowCornerRadius or 8)
-    local stroke = addGlassSheen(f, theme.StrokeTransparency, theme)
+    Instance.new("UICorner", f).CornerRadius = UDim.new(0, cornerRadius or theme.RowCornerRadius)
+    
+    local stroke = Instance.new("UIStroke", f)
+    stroke.Color = theme.Accent
+    stroke.Thickness = 1
+    stroke.Transparency = 0.5
     return f, stroke
-end
-
-local function applyAccentGradient(frame, theme, rotation)
-    local grad = Instance.new("UIGradient", frame)
-    grad.Rotation = rotation or 0
-    grad.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, theme.AccentGradient[1]),
-        ColorSequenceKeypoint.new(1, theme.AccentGradient[2]),
-    })
-    return grad
 end
 
 --// Window --------------------------------------------------------------
@@ -154,8 +105,6 @@ function Library:CreateWindow(config)
     local Theme = merge(DefaultTheme, config.Theme)
     local TitleText = config.Title or "7rqxy UI"
     local MenuKey = config.MenuKey or Enum.KeyCode.RightShift
-    local UseBlur = config.BackdropBlur ~= false
-    local BlurSize = config.BlurSize or 12
     local WindowSize = UDim2.new(0, 420, 0, 380)
 
     local Connections = {}
@@ -175,31 +124,22 @@ function Library:CreateWindow(config)
         ScreenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
     end
 
-    local BlurEffect
-    if UseBlur then
-        BlurEffect = Instance.new("BlurEffect")
-        BlurEffect.Name = "7rqxy_GlassBlur_" .. tostring(math.random(1, 999999))
-        BlurEffect.Size = 0
-        BlurEffect.Parent = Lighting
-    end
-
     local ToggleBtn = Instance.new("TextButton", ScreenGui)
     ToggleBtn.ZIndex = 5
     ToggleBtn.Size = UDim2.new(0, 46, 0, 46)
     ToggleBtn.Position = UDim2.new(0.5, -23, 0, 14)
     ToggleBtn.BackgroundColor3 = Theme.Panel
-    ToggleBtn.BackgroundTransparency = 0.15
     ToggleBtn.AutoButtonColor = false
     ToggleBtn.Text = "7"
     ToggleBtn.TextColor3 = Theme.Text
     ToggleBtn.Font = Enum.Font.GothamBold
     ToggleBtn.TextSize = 20
     Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1, 0)
-    addShadow(ToggleBtn, 0.7, 14)
+    addShadow(ToggleBtn, 14)
     local ToggleStroke = Instance.new("UIStroke", ToggleBtn)
     ToggleStroke.Thickness = 1.5
     ToggleStroke.Color = Theme.Accent
-    ToggleStroke.Transparency = 0.2
+    ToggleStroke.Transparency = 0
 
     local Main = Instance.new("Frame", ScreenGui)
     Main.Name = "MainFrame"
@@ -207,13 +147,15 @@ function Library:CreateWindow(config)
     Main.Size = WindowSize
     Main.Position = UDim2.new(0.5, -WindowSize.X.Offset / 2, 0.5, -WindowSize.Y.Offset / 2)
     Main.BackgroundColor3 = Theme.Background
-    Main.BackgroundTransparency = Theme.BackgroundTransparency
     Main.BorderSizePixel = 0
     Main.Visible = false
-    Instance.new("UICorner", Main).CornerRadius = UDim.new(0, Theme.CornerRadius or 14)
-    addShadow(Main, 0.6, 30)
-    addGlassSheen(Main, 0.5, Theme)
-    addRimLight(Main)
+    Instance.new("UICorner", Main).CornerRadius = UDim.new(0, Theme.CornerRadius)
+    addShadow(Main, 30)
+    
+    local MainStroke = Instance.new("UIStroke", Main)
+    MainStroke.Color = Theme.Accent
+    MainStroke.Thickness = 1
+    MainStroke.Transparency = 0.3
 
     local MainScale = Instance.new("UIScale", Main)
     MainScale.Scale = 1
@@ -225,14 +167,9 @@ function Library:CreateWindow(config)
         if state then
             Main.Visible = true
             MainScale.Scale = 0.94
-            Main.BackgroundTransparency = 1
             tween(MainScale, easeInfo(0.22), {Scale = 1})
-            tween(Main, easeInfo(0.22), {BackgroundTransparency = Theme.BackgroundTransparency})
-            if BlurEffect then tween(BlurEffect, easeInfo(0.25), {Size = BlurSize}) end
         else
             tween(MainScale, easeInfo(0.16, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Scale = 0.94})
-            tween(Main, easeInfo(0.16), {BackgroundTransparency = 1})
-            if BlurEffect then tween(BlurEffect, easeInfo(0.2), {Size = 0}) end
             task.delay(0.16, function()
                 if not isOpen then Main.Visible = false end
             end)
@@ -258,10 +195,9 @@ function Library:CreateWindow(config)
     local Divider = Instance.new("Frame", TopBar)
     Divider.Size = UDim2.new(1, -24, 0, 1)
     Divider.Position = UDim2.new(0, 12, 1, -1)
-    Divider.BackgroundColor3 = Color3.new(1, 1, 1)
-    Divider.BackgroundTransparency = 0.85
+    Divider.BackgroundColor3 = Theme.Accent
+    Divider.BackgroundTransparency = 0.5
     Divider.BorderSizePixel = 0
-    applyAccentGradient(Divider, Theme, 0)
 
     local TabBar = Instance.new("ScrollingFrame", Main)
     TabBar.ZIndex = 3
@@ -300,9 +236,7 @@ function Library:CreateWindow(config)
         local dragging, dragStart, startPos = false, nil, nil
         track(handle.InputBegan:Connect(function(input)
             if isPress(input) then
-                dragging = true
-                dragStart = input.Position
-                startPos = target.Position
+                dragging = true; dragStart = input.Position; startPos = target.Position
             end
         end))
         track(handle.InputEnded:Connect(function(input)
@@ -323,25 +257,17 @@ function Library:CreateWindow(config)
 
     makeDraggable(TopBar, Main)
 
-    -- MOBILE TOGGLE BUTTON FIX: Uses exact drag calculations and strict InputEnded
+    -- Toggle Button Drag Logic
     local tDragging, tMoved, tStart, tPos = false, false, nil, nil
     track(ToggleBtn.InputBegan:Connect(function(input)
         if isPress(input) then
             tDragging = true; tMoved = false; tStart = input.Position; tPos = ToggleBtn.Position
         end
     end))
-    track(ToggleBtn.InputEnded:Connect(function(input)
-        if isPress(input) then 
-            tDragging = false 
-            if not tMoved then 
-                setOpen(not isOpen) 
-            end
-        end
-    end))
     track(UserInputService.InputChanged:Connect(function(input)
         if tDragging and isMove(input) then
             local delta = input.Position - tStart
-            if delta.Magnitude > 15 then 
+            if delta.Magnitude > 10 then 
                 tMoved = true
                 local screen = screenSize()
                 local size = ToggleBtn.AbsoluteSize
@@ -351,6 +277,15 @@ function Library:CreateWindow(config)
             end
         end
     end))
+    track(ToggleBtn.InputEnded:Connect(function(input)
+        if isPress(input) then tDragging = false end
+    end))
+    
+    -- Native tap support to fix mobile miss-clicks
+    track(ToggleBtn.Activated:Connect(function()
+        if not tMoved then setOpen(not isOpen) end
+    end))
+    
     track(UserInputService.InputBegan:Connect(function(input, gp)
         if not gp and input.KeyCode == MenuKey then setOpen(not isOpen) end
     end))
@@ -367,7 +302,7 @@ function Library:CreateWindow(config)
         TabBtn.ZIndex = 3
         TabBtn.Size = UDim2.new(0, 92, 1, 0)
         TabBtn.BackgroundColor3 = Theme.Panel
-        TabBtn.BackgroundTransparency = selected and 0.15 or 0.95
+        TabBtn.BackgroundTransparency = selected and 0 or 0.6
         TabBtn.BorderSizePixel = 0
         TabBtn.AutoButtonColor = false
         TabBtn.Text = name
@@ -378,7 +313,7 @@ function Library:CreateWindow(config)
         local TabStroke = Instance.new("UIStroke", TabBtn)
         TabStroke.Thickness = 1
         TabStroke.Color = Theme.Accent
-        TabStroke.Transparency = selected and 0.45 or 0.95
+        TabStroke.Transparency = selected and 0 or 0.6
 
         local TabPage = Instance.new("ScrollingFrame", TabContainer)
         TabPage.ZIndex = 3
@@ -400,20 +335,18 @@ function Library:CreateWindow(config)
         table.insert(Tabs, entry)
         FirstTab = false
 
-        -- TAB BUTTON MOBILE FIX
-        track(TabBtn.InputEnded:Connect(function(input)
-            if isPress(input) then
-                for _, t in pairs(Tabs) do
-                    t.Page.Visible = false
-                    tween(t.Btn, easeInfo(0.15), {BackgroundTransparency = 0.95})
-                    tween(t.Stroke, easeInfo(0.15), {Transparency = 0.95})
-                    t.Btn.TextColor3 = Theme.SubText
-                end
-                TabPage.Visible = true
-                tween(TabBtn, easeInfo(0.15), {BackgroundTransparency = 0.15})
-                tween(TabStroke, easeInfo(0.15), {Transparency = 0.45})
-                TabBtn.TextColor3 = Theme.Text
+        -- Native tap for tabs
+        track(TabBtn.Activated:Connect(function()
+            for _, t in pairs(Tabs) do
+                t.Page.Visible = false
+                tween(t.Btn, easeInfo(0.15), {BackgroundTransparency = 0.6})
+                tween(t.Stroke, easeInfo(0.15), {Transparency = 0.6})
+                t.Btn.TextColor3 = Theme.SubText
             end
+            TabPage.Visible = true
+            tween(TabBtn, easeInfo(0.15), {BackgroundTransparency = 0})
+            tween(TabStroke, easeInfo(0.15), {Transparency = 0})
+            TabBtn.TextColor3 = Theme.Text
         end))
 
         function Tab:CreateHeader(text)
@@ -453,7 +386,7 @@ function Library:CreateWindow(config)
 
         function Tab:CreateToggle(opts)
             opts = opts or {}
-            local Row = newGlassPanel(TabPage, Theme, UDim2.new(1, 0, 0, 42))
+            local Row = newPanel(TabPage, Theme, UDim2.new(1, 0, 0, 42))
 
             local L = Instance.new("TextLabel", Row)
             L.Size = UDim2.new(1, -70, 1, 0)
@@ -469,29 +402,27 @@ function Library:CreateWindow(config)
             Track.Size = UDim2.new(0, 42, 0, 22)
             Track.Position = UDim2.new(1, -56, 0.5, -11)
             Track.BackgroundColor3 = Theme.Background
-            Track.BackgroundTransparency = 0.1
             Track.BorderSizePixel = 0
             Instance.new("UICorner", Track).CornerRadius = UDim.new(1, 0)
             local TrackStroke = Instance.new("UIStroke", Track)
             TrackStroke.Color = Theme.Accent
-            TrackStroke.Transparency = 0.65
+            TrackStroke.Transparency = 0.5
             TrackStroke.Thickness = 1
 
             local Fill = Instance.new("Frame", Track)
             Fill.Size = UDim2.new(1, 0, 1, 0)
-            Fill.BackgroundTransparency = 1
+            Fill.BackgroundColor3 = Theme.Accent
             Fill.BorderSizePixel = 0
             Instance.new("UICorner", Fill).CornerRadius = UDim.new(1, 0)
-            applyAccentGradient(Fill, Theme, 0)
 
             local Knob = Instance.new("Frame", Track)
             Knob.ZIndex = 2
             Knob.Size = UDim2.new(0, 16, 0, 16)
             Knob.Position = UDim2.new(0, 3, 0.5, -8)
-            Knob.BackgroundColor3 = Color3.new(1, 1, 1)
+            Knob.BackgroundColor3 = Theme.Text
             Knob.BorderSizePixel = 0
             Instance.new("UICorner", Knob).CornerRadius = UDim.new(1, 0)
-            addShadow(Knob, 0.75, 6)
+            addShadow(Knob, 6)
 
             local B = Instance.new("TextButton", Row)
             B.Size = UDim2.new(1, 0, 1, 0)
@@ -521,11 +452,9 @@ function Library:CreateWindow(config)
             end
             function ToggleObj:Get() return state end
 
-            -- TOGGLE BUTTON MOBILE FIX
-            track(B.InputEnded:Connect(function(input)
-                if isPress(input) then
-                    ToggleObj:Set(not state)
-                end
+            -- Native tap for toggle
+            track(B.Activated:Connect(function()
+                ToggleObj:Set(not state)
             end))
 
             return ToggleObj
@@ -536,7 +465,7 @@ function Library:CreateWindow(config)
             local minV, maxV = opts.Range[1], opts.Range[2]
             if maxV == minV then maxV = minV + 1 end 
 
-            local Row = newGlassPanel(TabPage, Theme, UDim2.new(1, 0, 0, 65))
+            local Row = newPanel(TabPage, Theme, UDim2.new(1, 0, 0, 65))
 
             local L = Instance.new("TextLabel", Row)
             L.Size = UDim2.new(1, -20, 0, 25)
@@ -561,23 +490,22 @@ function Library:CreateWindow(config)
             Track.Size = UDim2.new(1, -24, 0, 6)
             Track.Position = UDim2.new(0, 12, 0, 43)
             Track.BackgroundColor3 = Theme.Background
-            Track.BackgroundTransparency = 0.25
             Track.BorderSizePixel = 0
             Instance.new("UICorner", Track).CornerRadius = UDim.new(1, 0)
 
             local Fill = Instance.new("Frame", Track)
+            Fill.BackgroundColor3 = Theme.Accent
             Fill.BorderSizePixel = 0
             Instance.new("UICorner", Fill).CornerRadius = UDim.new(1, 0)
-            applyAccentGradient(Fill, Theme, 0)
 
             local Thumb = Instance.new("Frame", Track)
             Thumb.ZIndex = 2
             Thumb.AnchorPoint = Vector2.new(0.5, 0.5)
             Thumb.Size = UDim2.new(0, 14, 0, 14)
-            Thumb.BackgroundColor3 = Color3.new(1, 1, 1)
+            Thumb.BackgroundColor3 = Theme.Text
             Thumb.BorderSizePixel = 0
             Instance.new("UICorner", Thumb).CornerRadius = UDim.new(1, 0)
-            addShadow(Thumb, 0.75, 6)
+            addShadow(Thumb, 6)
 
             local value = clamp(opts.CurrentValue or minV, minV, maxV)
             local SliderObj = {}
@@ -630,7 +558,7 @@ function Library:CreateWindow(config)
             local topGap, bottomPad = 4, 8
             local listHeight = math.min(math.max(#opts.Options, 1), maxVisible) * optionHeight + 8
 
-            local Row = newGlassPanel(TabPage, Theme, UDim2.new(1, 0, 0, rowHeight))
+            local Row = newPanel(TabPage, Theme, UDim2.new(1, 0, 0, rowHeight))
             Row.ClipsDescendants = true
 
             local L = Instance.new("TextLabel", Row)
@@ -657,12 +585,11 @@ function Library:CreateWindow(config)
             ListHolder.Size = UDim2.new(1, -24, 0, listHeight)
             ListHolder.Position = UDim2.new(0, 12, 0, rowHeight + topGap)
             ListHolder.BackgroundColor3 = Theme.Background
-            ListHolder.BackgroundTransparency = 0.05
             ListHolder.BorderSizePixel = 0
-            Instance.new("UICorner", ListHolder).CornerRadius = UDim.new(0, 8)
+            Instance.new("UICorner", ListHolder).CornerRadius = UDim.new(0, 6)
             local ListStroke = Instance.new("UIStroke", ListHolder)
             ListStroke.Color = Theme.Accent
-            ListStroke.Transparency = 0.6
+            ListStroke.Transparency = 0.5
 
             local List = Instance.new("ScrollingFrame", ListHolder)
             List.Size = UDim2.new(1, 0, 1, 0)
@@ -707,17 +634,19 @@ function Library:CreateWindow(config)
                 tween(Row, easeInfo(0.22), {Size = openSize()})
                 tween(Chevron, easeInfo(0.2), {Rotation = 180})
                 
-                -- DROPDOWN MOBILE FIX: Uses target boundary size to ensure clicks on list don't close it instantly
-                outsideConn = UserInputService.InputBegan:Connect(function(input, gp)
-                    if gp or not isPress(input) then return end
-                    local ap = Row.AbsolutePosition
-                    local currentTargetHeight = rowHeight + topGap + listHeight + bottomPad
-                    local pos = input.Position
-                    if pos.X < ap.X or pos.X > ap.X + Row.AbsoluteSize.X or pos.Y < ap.Y or pos.Y > ap.Y + currentTargetHeight then
-                        close()
-                    end
+                task.delay(0.1, function()
+                    if not open then return end
+                    outsideConn = UserInputService.InputBegan:Connect(function(input, gp)
+                        if gp or not isPress(input) then return end
+                        local ap = Row.AbsolutePosition
+                        local currentTargetHeight = rowHeight + topGap + listHeight + bottomPad
+                        local pos = input.Position
+                        if pos.X < ap.X or pos.X > ap.X + Row.AbsoluteSize.X or pos.Y < ap.Y or pos.Y > ap.Y + currentTargetHeight then
+                            close()
+                        end
+                    end)
+                    track(outsideConn)
                 end)
-                track(outsideConn)
 
                 task.defer(function()
                     local rowTop = Row.AbsolutePosition.Y - TabPage.AbsolutePosition.Y + TabPage.CanvasPosition.Y
@@ -767,7 +696,7 @@ function Library:CreateWindow(config)
                     ib.TextColor3 = selected and Theme.Accent or Theme.Text
                     ib.Font = Enum.Font.Gotham
                     ib.TextSize = 13
-                    Instance.new("UICorner", ib).CornerRadius = UDim.new(0, 6)
+                    Instance.new("UICorner", ib).CornerRadius = UDim.new(0, 4)
 
                     track(ib.MouseEnter:Connect(function()
                         if tostring(itm) ~= tostring(currentOption) then
@@ -779,22 +708,19 @@ function Library:CreateWindow(config)
                             tween(ib, easeInfo(0.12), {BackgroundTransparency = 1})
                         end
                     end))
-                    -- DROPDOWN ITEM MOBILE FIX: Reliable InputEnded
-                    track(ib.InputEnded:Connect(function(input)
-                        if isPress(input) then
-                            Drop:Set(itm, true)
-                            close()
-                        end
+                    
+                    -- Native tap for dropdown items
+                    track(ib.Activated:Connect(function()
+                        Drop:Set(itm, true)
+                        close()
                     end))
                 end
                 List.CanvasSize = UDim2.new(0, 0, 0, #options * optionHeight + 8)
             end
             Drop:Refresh(opts.Options)
 
-            track(B.InputEnded:Connect(function(input)
-                if isPress(input) then
-                    if open then close() else openDrop() end
-                end
+            track(B.Activated:Connect(function()
+                if open then close() else openDrop() end
             end))
 
             return Drop
@@ -802,13 +728,12 @@ function Library:CreateWindow(config)
 
         function Tab:CreateTextbox(opts)
             opts = opts or {}
-            local Row = newGlassPanel(TabPage, Theme, UDim2.new(1, 0, 0, 42))
+            local Row = newPanel(TabPage, Theme, UDim2.new(1, 0, 0, 42))
 
             local Box = Instance.new("TextBox", Row)
             Box.Size = UDim2.new(1, -22, 1, -12)
             Box.Position = UDim2.new(0, 11, 0, 6)
             Box.BackgroundColor3 = Theme.Background
-            Box.BackgroundTransparency = 0.25
             Box.BorderSizePixel = 0
             Box.Text = opts.Default or ""
             Box.PlaceholderText = opts.Placeholder or opts.Name or ""
@@ -817,10 +742,10 @@ function Library:CreateWindow(config)
             Box.Font = Enum.Font.Gotham
             Box.TextSize = 14
             Box.ClearTextOnFocus = false
-            Instance.new("UICorner", Box).CornerRadius = UDim.new(0, 8)
+            Instance.new("UICorner", Box).CornerRadius = UDim.new(0, 6)
             local BoxStroke = Instance.new("UIStroke", Box)
             BoxStroke.Color = Theme.Accent
-            BoxStroke.Transparency = 0.65
+            BoxStroke.Transparency = 0.5
 
             local TextboxObj = {}
             function TextboxObj:Set(t) Box.Text = t end
@@ -838,7 +763,7 @@ function Library:CreateWindow(config)
             local currentKey = opts.CurrentKey or Enum.KeyCode.Unknown
             local listening = false
 
-            local Row = newGlassPanel(TabPage, Theme, UDim2.new(1, 0, 0, 42))
+            local Row = newPanel(TabPage, Theme, UDim2.new(1, 0, 0, 42))
 
             local L = Instance.new("TextLabel", Row)
             L.Size = UDim2.new(0.6, 0, 1, 0)
@@ -854,13 +779,12 @@ function Library:CreateWindow(config)
             B.Size = UDim2.new(0, 90, 0, 26)
             B.Position = UDim2.new(1, -100, 0.5, -13)
             B.BackgroundColor3 = Theme.Background
-            B.BackgroundTransparency = 0.25
             B.BorderSizePixel = 0
             B.Text = currentKey.Name
             B.TextColor3 = Theme.Accent
             B.Font = Enum.Font.GothamBold
             B.TextSize = 13
-            Instance.new("UICorner", B).CornerRadius = UDim.new(0, 8)
+            Instance.new("UICorner", B).CornerRadius = UDim.new(0, 6)
             local BStroke = Instance.new("UIStroke", B)
             BStroke.Color = Theme.Accent
             BStroke.Transparency = 0.5
@@ -872,11 +796,9 @@ function Library:CreateWindow(config)
                 B.Text = key.Name
             end
 
-            track(B.InputEnded:Connect(function(input)
-                if isPress(input) then
-                    listening = true
-                    B.Text = "..."
-                end
+            track(B.Activated:Connect(function()
+                listening = true
+                B.Text = "..."
             end))
 
             track(UserInputService.InputBegan:Connect(function(input, gp)
@@ -894,7 +816,7 @@ function Library:CreateWindow(config)
 
         function Tab:CreateButton(opts)
             opts = opts or {}
-            local Row = newGlassPanel(TabPage, Theme, UDim2.new(1, 0, 0, 42))
+            local Row = newPanel(TabPage, Theme, UDim2.new(1, 0, 0, 42))
 
             local B = Instance.new("TextButton", Row)
             B.Size = UDim2.new(1, 0, 1, 0)
@@ -904,10 +826,8 @@ function Library:CreateWindow(config)
             B.Font = Enum.Font.GothamBold
             B.TextSize = 14
 
-            track(B.InputEnded:Connect(function(input)
-                if isPress(input) then
-                    if opts.Callback then opts.Callback() end
-                end
+            track(B.Activated:Connect(function()
+                if opts.Callback then opts.Callback() end
             end))
         end
 
@@ -924,11 +844,13 @@ function Library:CreateWindow(config)
         N.ZIndex = 6
         N.Size = UDim2.new(1, 0, 0, 0)
         N.AutomaticSize = Enum.AutomaticSize.Y
-        N.BackgroundColor3 = Theme.Background
-        N.BackgroundTransparency = 1
+        N.BackgroundColor3 = Theme.Panel
+        N.BorderSizePixel = 0
         N.ClipsDescendants = true
-        Instance.new("UICorner", N).CornerRadius = UDim.new(0, 10)
-        addGlassSheen(N, 0.5, Theme)
+        Instance.new("UICorner", N).CornerRadius = UDim.new(0, 8)
+        local stroke = Instance.new("UIStroke", N)
+        stroke.Color = Theme.Accent
+        stroke.Transparency = 0.5
 
         local AccentBar = Instance.new("Frame", N)
         AccentBar.Size = UDim2.new(0, 3, 1, 0)
@@ -963,8 +885,6 @@ function Library:CreateWindow(config)
         Msg.TextWrapped = true
         Msg.TextXAlignment = Enum.TextXAlignment.Left
 
-        tween(N, easeInfo(0.2), {BackgroundTransparency = 0.1})
-
         task.delay(opts.Duration or 4, function()
             if N and N.Parent then
                 tween(N, easeInfo(0.25), {BackgroundTransparency = 1})
@@ -977,9 +897,6 @@ function Library:CreateWindow(config)
     function Window:Destroy()
         for _, c in ipairs(Connections) do
             pcall(function() c:Disconnect() end)
-        end
-        if BlurEffect then
-            pcall(function() BlurEffect:Destroy() end)
         end
         ScreenGui:Destroy()
     end
