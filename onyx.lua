@@ -1,4 +1,5 @@
--- Onyx Neumorphic UI Library V3.0 (7RQXY Edition)
+-- Onyx Neumorphic UI Library V3.1 (7RQXY Edition)
+-- Changelog: Fixed tab highlights, fixed color picker size, added Anti-AFK, added Row/Container flexibility.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -8,7 +9,7 @@ local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 
-local Onyx = { Version = "3.0.0", Animated = true }
+local Onyx = { Version = "3.1.0", Animated = true }
 
 local Signal = {}
 Signal.__index = Signal
@@ -181,6 +182,7 @@ local function ApplyRaisedNeumorph(frame, radius, thickness)
 	})
 	return st, surfGrad, stGrad
 end
+Onyx.ApplyRaisedNeumorph = ApplyRaisedNeumorph
 
 local function ApplyInsetNeumorph(frame, radius, thickness)
 	frame.BackgroundColor3 = Color3.new(1, 1, 1)
@@ -208,6 +210,7 @@ local function ApplyInsetNeumorph(frame, radius, thickness)
 	})
 	return st, surfGrad, stGrad
 end
+Onyx.ApplyInsetNeumorph = ApplyInsetNeumorph
 
 local function ApplyAccentNeumorph(frame, radius)
 	frame.BackgroundColor3 = Color3.new(1, 1, 1)
@@ -227,6 +230,7 @@ local function ApplyAccentNeumorph(frame, radius)
 	})
 	return st
 end
+Onyx.ApplyAccentNeumorph = ApplyAccentNeumorph
 
 local function Base(instance)
 	local self = { Instance = instance, _maid = Maid.new(), Changed = Signal.new() }
@@ -373,6 +377,17 @@ function Onyx.CloseAllLayers()
 	end
 end
 
+function Onyx.EnableAntiAFK(quiet)
+	local VirtualUser = game:GetService("VirtualUser")
+	LocalPlayer.Idled:Connect(function()
+		VirtualUser:CaptureController()
+		VirtualUser:ClickButton2(Vector2.new())
+		if not quiet then
+			Onyx.Notify({ Title = "System", Text = "Anti-AFK triggered. Connection maintained.", Duration = 2 })
+		end
+	end)
+end
+
 -- Notification System
 local notifContainer
 function Onyx.Notify(props)
@@ -464,7 +479,7 @@ function Onyx.Notify(props)
 	end)
 end
 
--- Attach helper methods to a Card or Window so users can call card:Switch(...) or Onyx.Switch(...)
+-- Attach helper methods to any container
 local function AttachContainerMethods(target)
 	function target:Telemetry(p) p = p or {} p.Parent = self.Content return Onyx.TelemetryDisplay(p) end
 	function target:StatRow(p) p = p or {} p.Parent = self.Content return Onyx.StatRow(p) end
@@ -480,12 +495,47 @@ local function AttachContainerMethods(target)
 	function target:ColorPicker(p) p = p or {} p.Parent = self.Content return Onyx.ColorPicker(p) end
 	function target:LogConsole(p) p = p or {} p.Parent = self.Content return Onyx.LogConsole(p) end
 	function target:Card(p) p = p or {} p.Parent = self.Content return Onyx.Card(p) end
+	function target:Row(p) p = p or {} p.Parent = self.Content return Onyx.Row(p) end
+	function target:Container(p) p = p or {} p.Parent = self.Content return Onyx.Container(p) end
+end
+
+-- Extensible Layout Components
+function Onyx.Row(props)
+	props = props or {}
+	local row = New("Frame", {
+		Size = props.Size or UDim2.new(1, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundTransparency = 1,
+		LayoutOrder = props.LayoutOrder,
+		Parent = props.Parent
+	})
+	List(row, { Horizontal = true, Gap = props.Gap or 10, VAlign = Enum.VerticalAlignment.Center })
+	local self = Base(row)
+	self.Content = row
+	AttachContainerMethods(self)
+	return self
+end
+
+function Onyx.Container(props)
+	props = props or {}
+	local container = New("Frame", {
+		Size = props.Size or UDim2.new(1, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundTransparency = 1,
+		LayoutOrder = props.LayoutOrder,
+		Parent = props.Parent
+	})
+	List(container, { Gap = props.Gap or 10 })
+	local self = Base(container)
+	self.Content = container
+	AttachContainerMethods(self)
+	return self
 end
 
 function Onyx.Card(props)
 	props = props or {}
 	local wrapper = New("Frame", {
-		Size = UDim2.new(1, 0, 0, 0),
+		Size = props.Size or UDim2.new(1, 0, 0, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		LayoutOrder = props.LayoutOrder,
 		Parent = props.Parent
@@ -610,7 +660,7 @@ function Onyx.Window(props)
 		Parent = bar
 	})
 	New("TextLabel", {
-		Text = props.Subtitle or "V3.0 ONYX EDITION • RCTRL TO HIDE",
+		Text = props.Subtitle or "V3.1 ONYX EDITION • RCTRL TO HIDE",
 		FontFace = Fonts.Medium,
 		TextSize = 10,
 		TextColor3 = Theme.TextDim,
@@ -691,6 +741,7 @@ function Onyx.Window(props)
 		Corner(tabBtn, 7)
 		local activeBg = New("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Parent = tabBtn })
 		local activeSt = ApplyAccentNeumorph(activeBg, 7)
+		activeSt.Transparency = 1 -- Hide by default to fix visual bug
 
 		local tabLbl = New("TextLabel", {
 			Size = UDim2.fromScale(1, 1),
@@ -778,7 +829,7 @@ end
 
 function Onyx.TelemetryDisplay(props)
 	props = props or {}
-	local well = New("Frame", { Size = UDim2.new(1, 0, 0, 38), LayoutOrder = props.LayoutOrder, Parent = props.Parent })
+	local well = New("Frame", { Size = props.Size or UDim2.new(1, 0, 0, 38), LayoutOrder = props.LayoutOrder, Parent = props.Parent })
 	ApplyInsetNeumorph(well, 9, 1.2)
 	Pad(well, 12, 0, 12, 0)
 
@@ -813,7 +864,7 @@ end
 
 function Onyx.StatRow(props)
 	props = props or {}
-	local well = New("Frame", { Size = UDim2.new(1, 0, 0, 34), LayoutOrder = props.LayoutOrder, Parent = props.Parent })
+	local well = New("Frame", { Size = props.Size or UDim2.new(1, 0, 0, 34), LayoutOrder = props.LayoutOrder, Parent = props.Parent })
 	ApplyInsetNeumorph(well, 8, 1)
 	Pad(well, 12, 0, 12, 0)
 	New("TextLabel", {
@@ -845,7 +896,7 @@ end
 function Onyx.InstructionBanner(props)
 	props = props or {}
 	local well = New("Frame", {
-		Size = UDim2.new(1, 0, 0, 0),
+		Size = props.Size or UDim2.new(1, 0, 0, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		LayoutOrder = props.LayoutOrder,
 		Parent = props.Parent
@@ -870,7 +921,7 @@ end
 
 function Onyx.Switch(props)
 	props = props or {}
-	local root = New("Frame", { Size = UDim2.new(1, 0, 0, 28), LayoutOrder = props.LayoutOrder, Parent = props.Parent })
+	local root = New("Frame", { Size = props.Size or UDim2.new(1, 0, 0, 28), LayoutOrder = props.LayoutOrder, Parent = props.Parent })
 	local lbl = New("TextLabel", {
 		Size = UDim2.new(1, -56, 1, 0),
 		Text = props.Label or "",
@@ -983,7 +1034,7 @@ function Onyx.Slider(props)
 	local suffix = props.Suffix or ""
 	local value = math.clamp(props.Value or min, min, max)
 
-	local root = New("Frame", { Size = UDim2.new(1, 0, 0, 46), LayoutOrder = props.LayoutOrder, Parent = props.Parent })
+	local root = New("Frame", { Size = props.Size or UDim2.new(1, 0, 0, 46), LayoutOrder = props.LayoutOrder, Parent = props.Parent })
 	New("TextLabel", {
 		Size = UDim2.new(1, -70, 0, 20),
 		Text = props.Label or "",
@@ -1074,7 +1125,7 @@ end
 function Onyx.Select(props)
 	props = props or {}
 	local options = props.Options or {}
-	local root = New("Frame", { Size = UDim2.new(1, 0, 0, 56), LayoutOrder = props.LayoutOrder, Parent = props.Parent })
+	local root = New("Frame", { Size = props.Size or UDim2.new(1, 0, 0, 56), LayoutOrder = props.LayoutOrder, Parent = props.Parent })
 	New("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 18),
 		Text = props.Label or "",
@@ -1176,11 +1227,8 @@ end
 
 function Onyx.ModeSelector(props)
 	props = props or {}
-	local options = props.Options or {
-		{ Key = "Teleport", Text = "TELEPORT + DRIVE" },
-		{ Key = "Drive", Text = "FULL DRIVE" }
-	}
-	local root = New("Frame", { Size = UDim2.new(1, 0, 0, 56), LayoutOrder = props.LayoutOrder, Parent = props.Parent })
+	local options = props.Options or {}
+	local root = New("Frame", { Size = props.Size or UDim2.new(1, 0, 0, 56), LayoutOrder = props.LayoutOrder, Parent = props.Parent })
 	New("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 16),
 		Text = props.Label or "Mode",
@@ -1192,7 +1240,7 @@ function Onyx.ModeSelector(props)
 
 	local row = New("Frame", { Position = UDim2.fromOffset(0, 20), Size = UDim2.new(1, 0, 0, 36), Parent = root })
 	local buttons = {}
-	local current = props.Value or options[1].Key
+	local current = props.Value or (options[1] and options[1].Key)
 	local count = math.max(1, #options)
 	local self = Base(root)
 
@@ -1208,6 +1256,7 @@ function Onyx.ModeSelector(props)
 		local baseStroke = ApplyRaisedNeumorph(btn, 9, 1.2)
 		local activeBg = New("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Parent = btn })
 		local activeStroke = ApplyAccentNeumorph(activeBg, 9)
+		activeStroke.Transparency = 1 -- Hide by default
 
 		local lbl = New("TextLabel", {
 			Size = UDim2.fromScale(1, 1),
@@ -1244,7 +1293,7 @@ end
 function Onyx.TextInput(props)
 	props = props or {}
 	local well = New("Frame", {
-		Size = UDim2.new(1, 0, 0, 38),
+		Size = props.Size or UDim2.new(1, 0, 0, 38),
 		LayoutOrder = props.LayoutOrder,
 		Parent = props.Parent
 	})
@@ -1277,7 +1326,7 @@ function Onyx.NumberInput(props)
 	props = props or {}
 	local min, max = props.Min or 0.01, props.Max or 9999
 	local root = New("Frame", {
-		Size = UDim2.new(1, 0, 0, 34),
+		Size = props.Size or UDim2.new(1, 0, 0, 34),
 		LayoutOrder = props.LayoutOrder,
 		Parent = props.Parent
 	})
@@ -1338,7 +1387,7 @@ function Onyx.Keybind(props)
 	local currentKey = props.Value or Enum.KeyCode.F
 	local listening = false
 
-	local root = New("Frame", { Size = UDim2.new(1, 0, 0, 32), LayoutOrder = props.LayoutOrder, Parent = props.Parent })
+	local root = New("Frame", { Size = props.Size or UDim2.new(1, 0, 0, 32), LayoutOrder = props.LayoutOrder, Parent = props.Parent })
 	New("TextLabel", {
 		Size = UDim2.new(1, -95, 1, 0),
 		Text = props.Label or "Keybind",
@@ -1395,7 +1444,7 @@ function Onyx.ColorPicker(props)
 	local curColor = props.Value or Theme.AccentGlow
 	local h, s, v = curColor:ToHSV()
 
-	local root = New("Frame", { Size = UDim2.new(1, 0, 0, 32), LayoutOrder = props.LayoutOrder, Parent = props.Parent })
+	local root = New("Frame", { Size = props.Size or UDim2.new(1, 0, 0, 32), LayoutOrder = props.LayoutOrder, Parent = props.Parent })
 	New("TextLabel", {
 		Size = UDim2.new(1, -60, 1, 0),
 		Text = props.Label or "Color",
@@ -1430,7 +1479,8 @@ function Onyx.ColorPicker(props)
 		if layer and layer.Open then layer.Close() return end
 		layer = openLayer(swatchBtn)
 
-		local pop = New("Frame", { Size = UDim2.fromOffset(220, 155), Parent = layer.Host })
+		-- Expanded Height to fit all 3 sliders comfortably (185px)
+		local pop = New("Frame", { Size = UDim2.fromOffset(220, 185), Parent = layer.Host })
 		ApplyRaisedNeumorph(pop, 11, 1.4)
 		Pad(pop, 12)
 		List(pop, { Gap = 8 })
@@ -1455,7 +1505,7 @@ end
 function Onyx.LogConsole(props)
 	props = props or {}
 	local well = New("Frame", {
-		Size = UDim2.new(1, 0, 0, props.Height or 125),
+		Size = props.Size or UDim2.new(1, 0, 0, props.Height or 125),
 		LayoutOrder = props.LayoutOrder,
 		Parent = props.Parent
 	})
@@ -1499,62 +1549,6 @@ function Onyx.LogConsole(props)
 	return self
 end
 
-function Onyx.KeySystem(props)
-	props = props or {}
-	local expectedKey = tostring(props.Key or "75381")
-	local keyLink = tostring(props.KeyLink or "https://7rqxy.dev")
-
-	local keyWin = Onyx.Window({
-		Title = props.Title or "7RQXY // AUTHENTICATION",
-		Subtitle = props.Subtitle or "ONYX SECURITY GATEWAY V3.0",
-		Size = UDim2.fromOffset(380, 295),
-		ToggleKey = false
-	})
-
-	local card = keyWin:Card({ Title = "License Verification" })
-	local status = card:Telemetry({ Text = "AWAITING KEY INPUT..." })
-	local input = card:TextInput({ Placeholder = "Paste Access Key..." })
-
-	local row = New("Frame", { Size = UDim2.new(1, 0, 0, 36), Parent = card.Content })
-	List(row, { Horizontal = true, Gap = 10 })
-
-	Onyx.Button({
-		Text = "COPY KEY LINK",
-		Size = UDim2.new(0.48, 0, 1, 0),
-		Parent = row,
-		OnClick = function()
-			if setclipboard then
-				setclipboard(keyLink)
-				status:SetStatus("KEY LINK COPIED TO CLIPBOARD!", true)
-			else
-				status:SetStatus("CLIPBOARD NOT SUPPORTED", false)
-			end
-		end
-	})
-
-	Onyx.Button({
-		Text = "AUTHENTICATE",
-		Accent = true,
-		Size = UDim2.new(0.48, 0, 1, 0),
-		Parent = row,
-		OnClick = function()
-			if input:GetValue() == expectedKey then
-				keyWin:SetActiveLED(true)
-				status:SetStatus("ACCESS GRANTED • LOADING...", true)
-				task.wait(0.3)
-				keyWin:Destroy()
-				if props.OnSuccess then props.OnSuccess() end
-			else
-				status:SetStatus("INVALID KEY • ACCESS DENIED", false)
-			end
-		end
-	})
-
-	return keyWin
-end
-
-if getgenv then
-	getgenv().Onyx = Onyx
-end
+if getgenv then getgenv().Onyx = Onyx end
 
 return Onyx
