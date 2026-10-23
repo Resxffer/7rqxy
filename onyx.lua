@@ -1,5 +1,4 @@
--- Onyx Neumorphic UI Library V3.1 (7RQXY Edition)
--- Changelog: Fixed tab highlights, fixed color picker size, added Anti-AFK, added Row/Container flexibility.
+-- Onyx Neumorphic UI Library V3.2 (7RQXY Edition)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -9,7 +8,7 @@ local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 
-local Onyx = { Version = "3.1.0", Animated = true }
+local Onyx = { Version = "3.2.0", Animated = true }
 
 local Signal = {}
 Signal.__index = Signal
@@ -155,6 +154,7 @@ local function List(parent, o)
 		Parent = parent
 	})
 end
+Onyx.List = List
 
 local function ApplyRaisedNeumorph(frame, radius, thickness)
 	frame.BackgroundColor3 = Color3.new(1, 1, 1)
@@ -182,7 +182,6 @@ local function ApplyRaisedNeumorph(frame, radius, thickness)
 	})
 	return st, surfGrad, stGrad
 end
-Onyx.ApplyRaisedNeumorph = ApplyRaisedNeumorph
 
 local function ApplyInsetNeumorph(frame, radius, thickness)
 	frame.BackgroundColor3 = Color3.new(1, 1, 1)
@@ -210,7 +209,6 @@ local function ApplyInsetNeumorph(frame, radius, thickness)
 	})
 	return st, surfGrad, stGrad
 end
-Onyx.ApplyInsetNeumorph = ApplyInsetNeumorph
 
 local function ApplyAccentNeumorph(frame, radius)
 	frame.BackgroundColor3 = Color3.new(1, 1, 1)
@@ -230,7 +228,6 @@ local function ApplyAccentNeumorph(frame, radius)
 	})
 	return st
 end
-Onyx.ApplyAccentNeumorph = ApplyAccentNeumorph
 
 local function Base(instance)
 	local self = { Instance = instance, _maid = Maid.new(), Changed = Signal.new() }
@@ -377,18 +374,19 @@ function Onyx.CloseAllLayers()
 	end
 end
 
+local antiAfkConn
 function Onyx.EnableAntiAFK(quiet)
+	if antiAfkConn then return end
 	local VirtualUser = game:GetService("VirtualUser")
-	LocalPlayer.Idled:Connect(function()
+	antiAfkConn = LocalPlayer.Idled:Connect(function()
 		VirtualUser:CaptureController()
 		VirtualUser:ClickButton2(Vector2.new())
 		if not quiet then
-			Onyx.Notify({ Title = "System", Text = "Anti-AFK triggered. Connection maintained.", Duration = 2 })
+			Onyx.Notify({ Title = "Anti-AFK", Text = "Idle prevented.", Duration = 2 })
 		end
 	end)
 end
 
--- Notification System
 local notifContainer
 function Onyx.Notify(props)
 	props = props or {}
@@ -479,7 +477,6 @@ function Onyx.Notify(props)
 	end)
 end
 
--- Attach helper methods to any container
 local function AttachContainerMethods(target)
 	function target:Telemetry(p) p = p or {} p.Parent = self.Content return Onyx.TelemetryDisplay(p) end
 	function target:StatRow(p) p = p or {} p.Parent = self.Content return Onyx.StatRow(p) end
@@ -488,6 +485,8 @@ local function AttachContainerMethods(target)
 	function target:Button(p) p = p or {} p.Parent = self.Content return Onyx.Button(p) end
 	function target:Slider(p) p = p or {} p.Parent = self.Content return Onyx.Slider(p) end
 	function target:Select(p) p = p or {} p.Parent = self.Content return Onyx.Select(p) end
+	function target:Dropdown(p) p = p or {} p.Parent = self.Content return Onyx.Select(p) end
+	function target:MultiSelect(p) p = p or {} p.Parent = self.Content return Onyx.MultiSelect(p) end
 	function target:ModeSelector(p) p = p or {} p.Parent = self.Content return Onyx.ModeSelector(p) end
 	function target:TextInput(p) p = p or {} p.Parent = self.Content return Onyx.TextInput(p) end
 	function target:NumberInput(p) p = p or {} p.Parent = self.Content return Onyx.NumberInput(p) end
@@ -499,7 +498,6 @@ local function AttachContainerMethods(target)
 	function target:Container(p) p = p or {} p.Parent = self.Content return Onyx.Container(p) end
 end
 
--- Extensible Layout Components
 function Onyx.Row(props)
 	props = props or {}
 	local row = New("Frame", {
@@ -602,7 +600,7 @@ end
 
 function Onyx.Window(props)
 	props = props or {}
-	local size = props.Size or UDim2.fromOffset(430, 610)
+	local size = props.Size or UDim2.fromOffset(440, 620)
 	local toggleKey = props.ToggleKey or Enum.KeyCode.RightControl
 
 	local shadowHolder = New("Frame", {
@@ -660,7 +658,7 @@ function Onyx.Window(props)
 		Parent = bar
 	})
 	New("TextLabel", {
-		Text = props.Subtitle or "V3.1 ONYX EDITION • RCTRL TO HIDE",
+		Text = props.Subtitle or "V3.2 ONYX EDITION • RCTRL TO HIDE",
 		FontFace = Fonts.Medium,
 		TextSize = 10,
 		TextColor3 = Theme.TextDim,
@@ -685,7 +683,6 @@ function Onyx.Window(props)
 		return b
 	end
 
-	-- Optional Tab Bar
 	local tabBarWrapper = New("Frame", {
 		Position = UDim2.fromOffset(16, 58),
 		Size = UDim2.new(1, -32, 0, 34),
@@ -735,13 +732,16 @@ function Onyx.Window(props)
 		end
 
 		local tabBtn = New("TextButton", {
-			Size = UDim2.fromOffset(math.max(76, #title * 8 + 24), 26),
+			Size = UDim2.fromOffset(math.max(74, #title * 8 + 22), 26),
 			Parent = tabBarList
 		})
 		Corner(tabBtn, 7)
-		local activeBg = New("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Parent = tabBtn })
+
+		local activeBg = New("Frame", { Size = UDim2.fromScale(1, 1), Parent = tabBtn })
 		local activeSt = ApplyAccentNeumorph(activeBg, 7)
-		activeSt.Transparency = 1 -- Hide by default to fix visual bug
+		-- Explicitly hide accent background & stroke on creation so inactive tabs stay dark
+		activeBg.BackgroundTransparency = 1
+		activeSt.Transparency = 1
 
 		local tabLbl = New("TextLabel", {
 			Size = UDim2.fromScale(1, 1),
@@ -771,20 +771,20 @@ function Onyx.Window(props)
 		AttachContainerMethods(tabObj)
 		table.insert(self._tabs, tabObj)
 
-		local function selectThis()
+		local function selectThis(animate)
 			self._activeTab = tabObj
 			for _, t in ipairs(self._tabs) do
 				local sel = (t == tabObj)
 				t.Scroll.Visible = sel
-				tween(t.ActiveBg, { BackgroundTransparency = sel and 0 or 1 }, true)
-				tween(t.ActiveStroke, { Transparency = sel and 0.25 or 1 }, true)
-				tween(t.Label, { TextColor3 = sel and rgb(255, 255, 255) or Theme.TextMuted }, true)
+				tween(t.ActiveBg, { BackgroundTransparency = sel and 0 or 1 }, animate)
+				tween(t.ActiveStroke, { Transparency = sel and 0.25 or 1 }, animate)
+				tween(t.Label, { TextColor3 = sel and rgb(255, 255, 255) or Theme.TextMuted }, animate)
 			end
 			Onyx.CloseAllLayers()
 		end
 
-		tabBtn.Activated:Connect(selectThis)
-		if #self._tabs == 1 then selectThis() end
+		tabBtn.Activated:Connect(function() selectThis(true) end)
+		if #self._tabs == 1 then selectThis(false) end
 		return tabObj
 	end
 
@@ -921,7 +921,12 @@ end
 
 function Onyx.Switch(props)
 	props = props or {}
-	local root = New("Frame", { Size = props.Size or UDim2.new(1, 0, 0, 28), LayoutOrder = props.LayoutOrder, Parent = props.Parent })
+	local wScale = props.Width or 1
+	local root = New("Frame", {
+		Size = props.Size or UDim2.new(wScale, 0, 0, 28),
+		LayoutOrder = props.LayoutOrder,
+		Parent = props.Parent
+	})
 	local lbl = New("TextLabel", {
 		Size = UDim2.new(1, -56, 1, 0),
 		Text = props.Label or "",
@@ -939,8 +944,10 @@ function Onyx.Switch(props)
 	})
 	local trackStroke = ApplyInsetNeumorph(btn, 999, 1.2)
 
-	local activeGlow = New("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Parent = btn })
+	local activeGlow = New("Frame", { Size = UDim2.fromScale(1, 1), Parent = btn })
 	local activeGlowStroke = ApplyAccentNeumorph(activeGlow, 999)
+	activeGlow.BackgroundTransparency = 1
+	activeGlowStroke.Transparency = 1
 
 	local knob = New("Frame", {
 		AnchorPoint = Vector2.new(0, 0.5),
@@ -994,8 +1001,15 @@ end
 
 function Onyx.Button(props)
 	props = props or {}
+	local wScale = props.Width or 1
+	local hPixels = props.Height or 34
+	local computedSize = props.Size or UDim2.new(wScale, 0, 0, hPixels)
+	if computedSize.Y.Scale > 0 and computedSize.Y.Offset == 0 then
+		computedSize = UDim2.new(computedSize.X.Scale, computedSize.X.Offset, 0, hPixels)
+	end
+
 	local btn = New("TextButton", {
-		Size = props.Size or UDim2.new(1, 0, 0, 36),
+		Size = computedSize,
 		LayoutOrder = props.LayoutOrder,
 		Parent = props.Parent
 	})
@@ -1009,7 +1023,7 @@ function Onyx.Button(props)
 		Size = UDim2.fromScale(1, 1),
 		Text = props.Text or "BUTTON",
 		FontFace = Fonts.Bold,
-		TextSize = 12,
+		TextSize = 11,
 		TextColor3 = props.Accent and rgb(255, 255, 255) or Theme.Text,
 		TextXAlignment = Enum.TextXAlignment.Center,
 		Parent = btn
@@ -1122,13 +1136,14 @@ function Onyx.Slider(props)
 	return self
 end
 
+-- Single-Choice Dropdown Menu
 function Onyx.Select(props)
 	props = props or {}
 	local options = props.Options or {}
 	local root = New("Frame", { Size = props.Size or UDim2.new(1, 0, 0, 56), LayoutOrder = props.LayoutOrder, Parent = props.Parent })
 	New("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 18),
-		Text = props.Label or "",
+		Text = props.Label or "Dropdown",
 		TextSize = 12,
 		FontFace = Fonts.Medium,
 		TextColor3 = Theme.Text,
@@ -1193,7 +1208,7 @@ function Onyx.Select(props)
 			local optTxt = New("TextLabel", {
 				Position = UDim2.fromOffset(10, 0),
 				Size = UDim2.new(1, -30, 1, 0),
-				Text = opt,
+				Text = tostring(opt),
 				TextSize = 12,
 				FontFace = isSelected and Fonts.Bold or Fonts.Medium,
 				TextColor3 = isSelected and Theme.AccentGlow or Theme.TextMuted,
@@ -1219,9 +1234,122 @@ function Onyx.Select(props)
 		paint(false)
 		if fire and props.OnChanged then props.OnChanged(v) end
 	end
-	function self:SetOptions(newOpts)
-		options = newOpts or {}
+	function self:GetValue() return value end
+	function self:SetOptions(newOpts) options = newOpts or {} end
+	return self
+end
+Onyx.Dropdown = Onyx.Select
+
+-- Multi-Choice Dropdown Menu
+function Onyx.MultiSelect(props)
+	props = props or {}
+	local options = props.Options or {}
+	local selected = {}
+	for _, v in ipairs(props.Values or {}) do selected[v] = true end
+
+	local root = New("Frame", { Size = props.Size or UDim2.new(1, 0, 0, 56), LayoutOrder = props.LayoutOrder, Parent = props.Parent })
+	New("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 18),
+		Text = props.Label or "Multi-Dropdown",
+		TextSize = 12,
+		FontFace = Fonts.Medium,
+		TextColor3 = Theme.Text,
+		Parent = root
+	})
+
+	local trig = New("TextButton", { Position = UDim2.fromOffset(0, 22), Size = UDim2.new(1, 0, 0, 34), Parent = root })
+	local st = ApplyRaisedNeumorph(trig, 9, 1.2)
+
+	local lbl = New("TextLabel", {
+		Position = UDim2.fromOffset(12, 0),
+		Size = UDim2.new(1, -44, 1, 0),
+		TextSize = 12,
+		FontFace = Fonts.SemiBold,
+		TextColor3 = Theme.AccentGlow,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		Parent = trig
+	})
+
+	local chevWell = New("Frame", {
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -8, 0.5, 0),
+		Size = UDim2.fromOffset(20, 20),
+		Parent = trig
+	})
+	ApplyInsetNeumorph(chevWell, 6, 1)
+	local chev = makeIcon("chevron-down", 12, "TextMuted", chevWell)
+	chev.Instance.AnchorPoint, chev.Instance.Position = Vector2.new(.5, .5), UDim2.fromScale(.5, .5)
+
+	local self = Base(root)
+	local layer
+
+	local function getList()
+		local out = {}
+		for _, opt in ipairs(options) do
+			if selected[opt] then table.insert(out, opt) end
+		end
+		return out
 	end
+
+	local function paint(open)
+		local list = getList()
+		lbl.Text = (#list > 0) and table.concat(list, ", ") or "None"
+		tween(chev.Instance, { Rotation = open and 180 or 0 }, true, TWEEN_SPRING)
+		tween(st, { Color = open and Theme.AccentGlow or Color3.new(1, 1, 1) }, true)
+	end
+	paint(false)
+
+	trig.Activated:Connect(function()
+		if layer and layer.Open then layer.Close() return end
+		layer = openLayer(trig, { OnClose = function() paint(false) end })
+		paint(true)
+
+		local dropShell = New("Frame", {
+			Size = UDim2.fromOffset(trig.AbsoluteSize.X, math.min(#options * 32 + 12, 200)),
+			Parent = layer.Host
+		})
+		ApplyRaisedNeumorph(dropShell, 10, 1.4)
+		Pad(dropShell, 6)
+
+		local mScroll = New("ScrollingFrame", { Size = UDim2.fromScale(1, 1), Parent = dropShell })
+		local mList = List(mScroll, { Gap = 4 })
+
+		for _, opt in ipairs(options) do
+			local btn = New("TextButton", { Size = UDim2.new(1, 0, 0, 28), Parent = mScroll })
+			Corner(btn, 7)
+
+			local optTxt = New("TextLabel", {
+				Position = UDim2.fromOffset(10, 0),
+				Size = UDim2.new(1, -30, 1, 0),
+				Text = tostring(opt),
+				TextSize = 12,
+				Parent = btn
+			})
+			local chk = makeIcon("check", 13, "AccentGlow", btn)
+			chk.Instance.AnchorPoint, chk.Instance.Position = Vector2.new(1, .5), UDim2.new(1, -8, .5, 0)
+
+			local function refreshRow()
+				local isSel = selected[opt] == true
+				btn.BackgroundColor3 = Theme.InsetTop
+				btn.BackgroundTransparency = isSel and 0.25 or 1
+				optTxt.FontFace = isSel and Fonts.Bold or Fonts.Medium
+				optTxt.TextColor3 = isSel and Theme.AccentGlow or Theme.TextMuted
+				chk.Instance.Visible = isSel
+			end
+			refreshRow()
+
+			btn.Activated:Connect(function()
+				selected[opt] = not selected[opt]
+				refreshRow()
+				paint(true)
+				local currentList = getList()
+				self.Changed:Fire(currentList)
+				if props.OnChanged then props.OnChanged(currentList) end
+			end)
+		end
+		mScroll.CanvasSize = UDim2.new(0, 0, 0, mList.AbsoluteContentSize.Y + 4)
+	end)
+
 	return self
 end
 
@@ -1240,7 +1368,7 @@ function Onyx.ModeSelector(props)
 
 	local row = New("Frame", { Position = UDim2.fromOffset(0, 20), Size = UDim2.new(1, 0, 0, 36), Parent = root })
 	local buttons = {}
-	local current = props.Value or (options[1] and options[1].Key)
+	local current = props.Value or (options[1] and (type(options[1]) == "table" and options[1].Key or options[1]))
 	local count = math.max(1, #options)
 	local self = Base(root)
 
@@ -1250,13 +1378,14 @@ function Onyx.ModeSelector(props)
 		local scaleW = 1 / count
 		local btn = New("TextButton", {
 			Position = UDim2.new(scaleW * (i - 1), i > 1 and 4 or 0, 0, 0),
-			Size = UDim2.new(scaleW, i > 1 and -4 or -4, 1, 0),
+			Size = UDim2.new(scaleW, -4, 1, 0),
 			Parent = row
 		})
 		local baseStroke = ApplyRaisedNeumorph(btn, 9, 1.2)
-		local activeBg = New("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Parent = btn })
+		local activeBg = New("Frame", { Size = UDim2.fromScale(1, 1), Parent = btn })
 		local activeStroke = ApplyAccentNeumorph(activeBg, 9)
-		activeStroke.Transparency = 1 -- Hide by default
+		activeBg.BackgroundTransparency = 1
+		activeStroke.Transparency = 1
 
 		local lbl = New("TextLabel", {
 			Size = UDim2.fromScale(1, 1),
@@ -1479,10 +1608,13 @@ function Onyx.ColorPicker(props)
 		if layer and layer.Open then layer.Close() return end
 		layer = openLayer(swatchBtn)
 
-		-- Expanded Height to fit all 3 sliders comfortably (185px)
-		local pop = New("Frame", { Size = UDim2.fromOffset(220, 185), Parent = layer.Host })
+		local pop = New("Frame", {
+			Size = UDim2.fromOffset(230, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			Parent = layer.Host
+		})
 		ApplyRaisedNeumorph(pop, 11, 1.4)
-		Pad(pop, 12)
+		Pad(pop, 12, 12, 12, 14)
 		List(pop, { Gap = 8 })
 
 		Onyx.Slider({
